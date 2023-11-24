@@ -44,3 +44,8 @@ Podfile.lock
 Pods
 xcuserdata
 *~
+
+modelzoo/ple/*.log
+modelzoo/ple/data/
+modelzoo/ple/result/model*
+modelzoo/ple/report*
