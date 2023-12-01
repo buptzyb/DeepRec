@@ -117,29 +117,16 @@ def l2_regularizer(scale, scope=None):
 offload_var_size = 0
 def create_offload_var(fn):
     global offload_var_size
-    if args.use_offload:
-        print("Generating initialization tensor")
-        # Create initialization tensor in GPU-offload memory
-        # (system mem on Grace-Hopper, managed mem on x86).
-        # The op can be run on the CPU or the GPU, but the GPU would need to page
-        # the entire tensor through GPU mem which is probably slow.
-        with tf.device('/cpu:0'):
-            offload_init = make_gpu_offload(fn)
-
-        print("Creating Variable")
-        # Construct the Variable from the init tensor.
-        # The Variable can be placed on either the CPU or the GPU; no memory copy
-        # will be incurred either way because the tensor is in GPU-offload memory.
+    if args.offload_variable:
         with tf.device('/gpu:0'):
+            offload_init = make_gpu_offload(fn)
             offload_var = tf.Variable(offload_init)
-            # IMPORTANT: This is required in order to avoid a redundant copy in
-            # ResourceGather due to the reference count being > 1.
             del offload_init
+        offload_var_size += reduce(lambda x,y: x*y, offload_var.shape.as_list()) * 4
+        print("Create offload Variable, accumulate size", offload_var_size, "Bytes.")
     else:
         with tf.device('/gpu:0'):
             offload_var = tf.Variable(fn())
-    offload_var_size += reduce(lambda x,y: x*y, offload_var.shape.as_list()) * 4
-    print("Offload tensor accumulate size", offload_var_size, "Bytes")
     return offload_var
 
 class PLE():
@@ -884,8 +871,8 @@ def get_arg_parser():
                         help='Whether to enable Work Queue. Default to False.',
                         type=boolean_string,
                         default=False)
-    parser.add_argument('--use_offload',
-                        help='Whether to enable GPUOffloadAllocator. Default to False.',
+    parser.add_argument('--offload_variable',
+                        help='Whether to enable GPUOffloadAllocator to offload Variable ops. Default to False.',
                         action='store_true')
     return parser
 
