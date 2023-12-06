@@ -665,7 +665,6 @@ def main(tf_config=None, server=None):
     # sess_config.session_inter_op_thread_pool.add()
     # sess_config.session_inter_op_thread_pool.add()
     # sess_config.session_inter_op_thread_pool.add()
-    # sess_config.session_inter_op_thread_pool.add()
     # sess_config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
     # sess_config.gpu_options.stream_merge_options.merge_h_to_d_stream = True

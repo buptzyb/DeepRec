@@ -203,23 +203,23 @@ class PLE():
     def cgc_model(self, inputs, level_name, is_last=False):
         specific_expert_outputs = []
         # build task-specific expert layer
-        with tf.cuda.stream_scope(tf.cuda.get_stream(1)):
-            for i in range(self._num_tasks):
-                for j in range(self._specific_expert_num):
+        for i in range(self._num_tasks):
+            for j in range(self._specific_expert_num):
+                with tf.cuda.stream_scope(tf.cuda.get_stream(i*self._specific_expert_num+j+1)): # every task (cvr/ctr), every expert, has its own stream
                     expert_network = self._dnn(inputs[i], dnn_hidden_units=self._expert_dnn_hidden_units, layer_name=level_name + 'task_' + self._towers[i][0] + '_expert_specific_' + str(j))
                     specific_expert_outputs.append(expert_network)
 
         # build task-shared expert layer
-        with tf.cuda.stream_scope(tf.cuda.get_stream(2)):
-            shared_expert_outputs = []
-            for k in range(self._shared_expert_num):
+        shared_expert_outputs = []
+        for k in range(self._shared_expert_num):
+            with tf.cuda.stream_scope(tf.cuda.get_stream(self._num_tasks*self._specific_expert_num+k+1)): # every shared expert has its own stream
                 expert_network = self._dnn(inputs[-1], dnn_hidden_units=self._expert_dnn_hidden_units, layer_name=level_name + 'expert_shared_' + str(k))
                 shared_expert_outputs.append(expert_network)
 
         # task_specific gate (count = num_tasks)
-        with tf.cuda.stream_scope(tf.cuda.get_stream(3)):
-            cgc_outs = []
-            for i in range(self._num_tasks):
+        cgc_outs = []
+        for i in range(self._num_tasks):
+            with tf.cuda.stream_scope(tf.cuda.get_stream(i*self._specific_expert_num+1)): # every task (cvr/ctr) has its own stream
                 # concat task-specific expert and task-shared expert
                 cur_expert_num = self._specific_expert_num + self._shared_expert_num
                 # task_specific + task_shared
@@ -240,7 +240,7 @@ class PLE():
                 cgc_outs.append(gate_mul_expert)
 
         # if not last, add a shared gate
-        with tf.cuda.stream_scope(tf.cuda.get_stream(4)):
+        with tf.cuda.stream_scope(tf.cuda.get_stream(self._num_tasks*self._specific_expert_num+1)): # shared experts has one stream
             if not is_last:
                 cur_expert_num = self._num_tasks * self._specific_expert_num + self._shared_expert_num
                 cur_experts = specific_expert_outputs + shared_expert_outputs  # all the expert include task-specific expert and task-shared expert
@@ -681,6 +681,8 @@ def main(tf_config=None, server=None):
     # sess_config.gpu_options.multi_stream_options.constant_memory_mode = "shared"
 
     # sess_config.gpu_options.experimental.virtual_devices.add()
+    # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
+    # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
     # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
     # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
     # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)

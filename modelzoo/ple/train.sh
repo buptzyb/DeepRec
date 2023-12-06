@@ -20,24 +20,24 @@ export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export TF_FORCE_GPU_ALLOW_GROWTH=true
 
 ###### TF multistream
-# export TF_GPU_CONTEXT_COUNT=5
-# export TF_GPU_STREAM_GROUP_COUNT=5
-# export TF_GPU_STREAM_MERGE=true
-# export TF_PER_STREAM_HOST_ALLOCATOR=true
-# export TF_GPU_STREAM_GROUP_SHARE_MEMORY_LIMIT=true
-# export TF_SEGMENT_OWN_CONST=true
-# export TF_OFFLOAD_ALL=true
+# export TF_GPU_CONTEXT_COUNT=6
+export TF_GPU_STREAM_GROUP_COUNT=6
+export TF_GPU_STREAM_MERGE=true
+export TF_PER_STREAM_HOST_ALLOCATOR=true
+export TF_GPU_STREAM_GROUP_SHARE_MEMORY_LIMIT=true
+export TF_SEGMENT_OWN_CONST=true
+export TF_OFFLOAD_ALL=true
 # export TF_OFFLOAD_ALL_CONST=true
 # export TF_OFFLOAD_ALLOCATOR_MIGRATE=false
-# export TF_OFFLOAD_PREFER_GPU=true
-# export TF_GPU_OFFLOAD_BFC_IN_MB=80000
+export TF_OFFLOAD_PREFER_GPU=true
+export TF_GPU_OFFLOAD_BFC_IN_MB=80000
 # export TF_ASYNCALLOCATOR_REUSE1=false
 # export TF_ASYNCALLOCATOR_REUSE2=false
 # export TF_ASYNCALLOCATOR_REUSE3=false
 
 ###### TF multistream training
-# export TF_NODE_LEVEL_MULTISTREAM=true
-# export TF_REDUCE_STREAM_WAIT=true
+export TF_NODE_LEVEL_MULTISTREAM=true
+export TF_REDUCE_STREAM_WAIT=true
 #export TF_STREAM_FROM_FILE=/home/robinz/MSTF/tensorflow/tensorflow/cc/tutorials/ple.txt
 
 ###### CUDA and TF log
@@ -55,8 +55,9 @@ export TF_FORCE_GPU_ALLOW_GROWTH=true
 
 NSYS=/opt/nvidia/nsight-systems/2023.4.1/bin/nsys
 
-# ${NSYS} profile -o report-ple-bfc --force-overwrite true --sample none --cpuctxsw=none --cuda-flush-interval 100 --trace=cuda,osrt,nvtx --cuda-memory-usage true --cuda-um-cpu-page-faults true --cuda-um-gpu-page-faults true \
-python -u train_tf2_api_offload.py --tf --steps 500 --no_eval --inter 1 #--offload_variable
+# ${NSYS} profile -o report-ple-um --force-overwrite true --sample none --cpuctxsw=none --cuda-flush-interval 100 --gpuctxsw=true --trace=cuda --cuda-memory-usage true --cuda-um-cpu-page-faults true --cuda-um-gpu-page-faults true \
+numactl --cpunodebind 0 \
+python -u train_tf2_api_offload.py --tf --steps 1000 --no_eval --inter 1 #--offload_variable
 
 
 #echo quit | nvidia-cuda-mps-control
