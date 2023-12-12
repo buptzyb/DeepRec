@@ -236,13 +236,13 @@ class PLE():
         # task_specific gate (count = num_tasks)
         cgc_outs = []
         for i in range(self._num_tasks):
-            with tf.cuda.stream_scope(tf.cuda.get_stream(i*self._specific_expert_num+1)): # every task (cvr/ctr) has its own stream
-                # concat task-specific expert and task-shared expert
-                cur_expert_num = self._specific_expert_num + self._shared_expert_num
-                # task_specific + task_shared
-                cur_experts = specific_expert_outputs[
-                            i * self._specific_expert_num:(i + 1) * self._specific_expert_num] + shared_expert_outputs
+            # concat task-specific expert and task-shared expert
+            cur_expert_num = self._specific_expert_num + self._shared_expert_num
+            # task_specific + task_shared
+            cur_experts = specific_expert_outputs[
+                          i * self._specific_expert_num:(i + 1) * self._specific_expert_num] + shared_expert_outputs
 
+            with tf.cuda.stream_scope(tf.cuda.get_stream(i*self._specific_expert_num+1)): # every task (cvr/ctr) has its own stream
                 expert_concat = tf.stack(cur_experts, axis=1)
 
                 # build gate layers
@@ -257,11 +257,11 @@ class PLE():
                 cgc_outs.append(gate_mul_expert)
 
         # if not last, add a shared gate
-        with tf.cuda.stream_scope(tf.cuda.get_stream(self._num_tasks*self._specific_expert_num+1)): # shared experts has one stream
-            if not is_last:
-                cur_expert_num = self._num_tasks * self._specific_expert_num + self._shared_expert_num
-                cur_experts = specific_expert_outputs + shared_expert_outputs  # all the expert include task-specific expert and task-shared expert
+        if not is_last:
+            cur_expert_num = self._num_tasks * self._specific_expert_num + self._shared_expert_num
+            cur_experts = specific_expert_outputs + shared_expert_outputs  # all the expert include task-specific expert and task-shared expert
 
+            with tf.cuda.stream_scope(tf.cuda.get_stream(self._num_tasks*self._specific_expert_num+1)): # shared experts has one stream
                 expert_concat = tf.stack(cur_experts, axis=1)
                 # gate layers
                 gate_input = self._dnn(inputs[-1], dnn_hidden_units=self._gate_dnn_hidden_units, layer_name=level_name + 'gate_shared')
@@ -322,14 +322,15 @@ class PLE():
                 tower_name = tower[0]
                 hidden_units = tower[2]
                 
-                with tf.variable_scope(tower_name, reuse=tf.AUTO_REUSE):
-                    tower_output = self._dnn(ple_outputs[i], dnn_hidden_units=hidden_units, layer_name='tower_'+tower_name)
-                    weights = create_offload_var(lambda: tf.glorot_uniform_initializer()([tower_output.shape[1], 1]))
-                    final_tower_predict = tf.matmul(tower_output, weights, name=f'{tower_name}_output')
-                    self._add_layer_summary(final_tower_predict, f'{tower_name}_output')
-                    if self._bf16:
-                        final_tower_predict = tf.cast(final_tower_predict, dtype=tf.float32)
-                    towers.append(final_tower_predict)
+                with tf.cuda.stream_scope(tf.cuda.get_stream(i*self._specific_expert_num+1)): # every task (cvr/ctr) has its own stream
+                    with tf.variable_scope(tower_name, reuse=tf.AUTO_REUSE):
+                        tower_output = self._dnn(ple_outputs[i], dnn_hidden_units=hidden_units, layer_name='tower_'+tower_name)
+                        weights = create_offload_var(lambda: tf.glorot_uniform_initializer()([tower_output.shape[1], 1]))
+                        final_tower_predict = tf.matmul(tower_output, weights, name=f'{tower_name}_output')
+                        self._add_layer_summary(final_tower_predict, f'{tower_name}_output')
+                        if self._bf16:
+                            final_tower_predict = tf.cast(final_tower_predict, dtype=tf.float32)
+                        towers.append(final_tower_predict)
             tower_stack = tf.stack(towers, axis=1)
             self._logits = tf.squeeze(tower_stack, [2])
             self.probability = tf.math.sigmoid(self._logits)
@@ -687,6 +688,7 @@ def main(tf_config=None, server=None):
     sess_config.session_inter_op_thread_pool.add()
     sess_config.session_inter_op_thread_pool.add()
     sess_config.session_inter_op_thread_pool.add()
+    sess_config.session_inter_op_thread_pool.add()
     # sess_config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
     # sess_config.gpu_options.stream_merge_options.merge_h_to_d_stream = True
@@ -698,10 +700,6 @@ def main(tf_config=None, server=None):
     # sess_config.gpu_options.multi_stream_options.constant_memory_mode = "shared"
 
     # sess_config.gpu_options.experimental.virtual_devices.add()
-    # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
-    # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
-    # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
-    # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
     # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
     # sess_config.gpu_options.experimental.virtual_devices[0].memory_limit_mb.append(2000)
 
