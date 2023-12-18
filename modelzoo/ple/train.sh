@@ -12,8 +12,8 @@ export CUDA_DEVICE_ORDER=PCI_BUS_ID
 
 ###### TF basic
 # export TF_SYNC_ON_FINISH=false
-# export TF_GPU_THREAD_MODE=gpu_private
-# export TF_GPU_THREAD_COUNT=1
+export TF_GPU_THREAD_MODE=gpu_private
+export TF_GPU_THREAD_COUNT=1
 export TF_FORCE_GPU_ALLOW_GROWTH=true
 
 ###### multistream (graph-level)
@@ -31,11 +31,11 @@ export TF_MULTI_STREAM_ALLOW_FORWARD_PROPAGATION=true
 #export TF_STREAM_FROM_FILE=/home/robinz/MSTF/tensorflow/tensorflow/cc/tutorials/ple.txt
 
 ###### memory management - offload allocator
+export TF_OFFLOAD_GPU_LEVEL=1
+export TF_OFFLOAD_CPU_LEVEL=0
+export TF_OFFLOAD_BFC_IN_MB=80000
 export TF_OFFLOAD_ALL=true
 # export TF_OFFLOAD_CONST=true
-# export TF_OFFLOAD_ALLOW_MIGRATE=false
-export TF_OFFLOAD_PREFER_GPU=true
-export TF_OFFLOAD_BFC_IN_MB=80000
 
 ###### memory management - MallocAsync allocator
 export TF_GPU_ALLOCATOR=cuda_malloc_async
@@ -48,7 +48,7 @@ export TF_CUDA_MALLOC_ASYNC_REUSE3=false
 
 ###### CUDA and TF log
 # export TF_MULTI_STREAM_KEY_INFO_LOG=true
-# export TF_CPP_MAX_VLOG_LEVEL=2
+# export TF_CPP_MAX_VLOG_LEVEL=1
 # export TF_CPP_VMODULE=bfc_allocator=2
 # export TF_ENABLE_NVTX_RANGES=1
 # export TF_ENABLE_NVTX_RANGES_DETAILED=1
